@@ -1,4 +1,3 @@
-*.o
-*.a
-*.swp
+#!/bin/sh
+
 tests/construct

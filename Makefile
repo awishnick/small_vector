@@ -14,13 +14,13 @@
 
 # Points to the root of Google Test, relative to where this file is.
 # Remember to tweak this if you move this file.
-GTEST_DIR = gtest-1.6.0
+GTEST_DIR = tests/gtest-1.6.0
 
 # The path where the small_vector.h header lives
-SMALL_VECTOR_DIR = ..
+SMALL_VECTOR_DIR = .
 
 # Where to find user code.
-USER_DIR = .
+USER_DIR = tests/
 
 # Flags passed to the preprocessor.
 CPPFLAGS += -I$(GTEST_DIR)/include -I$(SMALL_VECTOR_DIR)
