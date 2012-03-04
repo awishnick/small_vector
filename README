@@ -1,0 +1,6 @@
+This is an implementation of a container much like std::vector. It
+is meant to be used when the size is expected to be reasonably small.
+If the small_vector's size is small enough, it will use internal stack
+storage. Only if it becomes too large will it fall back on heap allocation.
+This does mean that there is additional memory overhead when used as
+a large container, but it should be useful nonetheless.
