@@ -1,3 +1,10 @@
 #!/bin/sh
 
-tests/construct
+# Build tests
+make
+if [[ $? != 0 ]] ; then
+  exit $rc
+fi
+
+# Run all tests
+./construct

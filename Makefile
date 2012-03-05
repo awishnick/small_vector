@@ -19,6 +19,9 @@ GTEST_DIR = tests/gtest-1.6.0
 # The path where the small_vector.h header lives
 SMALL_VECTOR_DIR = .
 
+# Path to the small_vector header
+SMALL_VECTOR_HEADER = $(SMALL_VECTOR_DIR)/small_vector.h
+
 # Where to find user code.
 USER_DIR = tests/
 
@@ -27,6 +30,9 @@ CPPFLAGS += -I$(GTEST_DIR)/include -I$(SMALL_VECTOR_DIR)
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -Werror
+
+# Use clang as the compiler. Comment this out to use the default.
+CXX = clang++
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
@@ -72,7 +78,8 @@ gtest_main.a : gtest-all.o gtest_main.o
 # gtest_main.a, depending on whether it defines its own main()
 # function.
 
-construct.o : $(USER_DIR)/construct.cpp
+construct.o : $(USER_DIR)/construct.cpp \
+	            $(SMALL_VECTOR_HEADER)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/construct.cpp
 
 construct : construct.o gtest_main.a
