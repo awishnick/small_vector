@@ -143,13 +143,16 @@ public:
       T* new_begin = Allocator::allocate(new_capacity);
 
       // Copy-construct elements. If the copy constructor throws,
-      // we'll delete our new array and rethrow
+      // we'll delete our new array and rethrow.
+      // After copy-constructing the new element, we destroy
+      // the old one.
       try {
         T* old_elem = m_begin;
         for( T* new_elem = new_begin;
              old_elem != m_end;
              ++new_elem, ++old_elem ) {
           Allocator::construct(new_elem, *old_elem);
+          Allocator::destroy(old_elem);
         }
       } catch (...) {
         Allocator::deallocate(new_begin, 0);
@@ -158,17 +161,14 @@ public:
 
       // Now use the new array and free the old one
       const size_type old_size = size();
-      T* old_begin = m_begin,
-       * old_end = m_end;
+      T* old_begin = m_begin;
       const bool was_small = is_small();
 
       m_begin = new_begin;
       m_end = new_begin + old_size;
       m_capacity_end = new_begin + new_capacity;
 
-      // Destruct all the old instances. Only free memory if
-      // it's not from our small backing storage
-      destroy_range(old_begin, old_end);
+      // Only free memory if it's not from our small backing storage
       if (!was_small) {
         Allocator::deallocate(old_begin, 0);
       }
