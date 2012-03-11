@@ -23,7 +23,7 @@ SMALL_VECTOR_DIR = .
 SMALL_VECTOR_HEADER = $(SMALL_VECTOR_DIR)/small_vector.h
 
 # Where to find user code.
-USER_DIR = tests/
+USER_DIR = tests
 
 # Flags passed to the preprocessor.
 CPPFLAGS += -I$(GTEST_DIR)/include -I$(SMALL_VECTOR_DIR)
@@ -36,7 +36,7 @@ CXX = clang++
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = construct
+TESTS = construct modifiers
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -83,4 +83,11 @@ construct.o : $(USER_DIR)/construct.cpp \
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/construct.cpp
 
 construct : construct.o gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+
+modifiers.o : $(USER_DIR)/modifiers.cpp \
+	            $(SMALL_VECTOR_HEADER)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/modifiers.cpp
+
+modifiers : modifiers.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@

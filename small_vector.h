@@ -2,7 +2,7 @@
 
 #include <cstddef>      // std::size_t, std::ptrdiff_t
 #include <memory>       // std::allocator
-
+#include <iostream>
 template <class T, std::size_t SmallSize>
 class small_vector_storage {
 protected:
@@ -77,10 +77,10 @@ public:
     uninitialized_fill(m_begin, m_end, T());
   }
 
-  explicit small_vector(size_type n, const T& value,
-                        const Allocator& = Allocator() ) :
+  small_vector(size_type n, const T& value,
+               const Allocator& = Allocator() ) :
     m_begin(storage_base::small_begin()),
-    m_end(storage_base::small_end()),
+    m_end(storage_base::small_begin()),
     m_capacity_end(storage_base::small_end()) {
 
     // If n is greater than the small size, allocate
@@ -93,6 +93,19 @@ public:
 
     // Fill our range with a default-constructed value
     uninitialized_fill(m_begin, m_end, value);
+  }
+
+  template <class InputIterator>
+  small_vector(InputIterator first, InputIterator last,
+               const Allocator& = Allocator()) :
+    m_begin(storage_base::small_begin()),
+    m_end(storage_base::small_begin()),
+    m_capacity_end(storage_base::small_end()) {
+
+    typedef
+      typename std::iterator_traits<InputIterator>::iterator_category
+      iterator_category;
+    range_construct(first, last, iterator_category());
   }
 
   ~small_vector() {
@@ -116,6 +129,57 @@ public:
   const_reference operator[](size_type n) const {
     return m_begin[n];
   }
+
+  // 23.3.6.5, modifiers:
+  void push_back(const T& x) {
+    // If we do not have enough capacity, reallocate
+    const size_type new_size = size() + 1;
+    if (new_size > capacity()) {
+      // Reallocate a bigger array, but make it still have size()
+      // elements, not size() + 1
+
+      // This could throw bad_alloc
+      const size_type new_capacity = 2 * capacity();
+      T* new_begin = Allocator::allocate(new_capacity);
+
+      // Copy-construct elements. If the copy constructor throws,
+      // we'll delete our new array and rethrow
+      try {
+        T* old_elem = m_begin;
+        for( T* new_elem = new_begin;
+             old_elem != m_end;
+             ++new_elem, ++old_elem ) {
+          Allocator::construct(new_elem, *old_elem);
+        }
+      } catch (...) {
+        Allocator::deallocate(new_begin, 0);
+        throw;
+      }
+
+      // Now use the new array and free the old one
+      const size_type old_size = size();
+      T* old_begin = m_begin,
+       * old_end = m_end;
+      const bool was_small = is_small();
+
+      m_begin = new_begin;
+      m_end = new_begin + old_size;
+      m_capacity_end = new_begin + new_capacity;
+
+      // Destruct all the old instances. Only free memory if
+      // it's not from our small backing storage
+      destroy_range(old_begin, old_end);
+      if (!was_small) {
+        Allocator::deallocate(old_begin, 0);
+      }
+
+    }
+
+    // Now just construct the new element
+    Allocator::construct(m_end, x);
+    ++m_end;
+  }
+
 private:
   T* m_begin,
    * m_end,
@@ -124,18 +188,62 @@ private:
   // Returns whether we're using our small storage
   bool is_small() const { return m_begin == storage_base::small_begin(); }
 
-  // Initializes the range [begin, end) to value. Doesn't destruct the
+  // Initializes the range [first, last) to value. Doesn't destruct the
   // range because it assumes that no objects have been constructed there.
-  void uninitialized_fill(T* begin, T* end, const T& value) {
-    for( ; begin != end; ++begin ) {
-      Allocator::construct(begin, value);
+  void uninitialized_fill(T* first, T* last, const T& value) {
+    for( ; first != last; ++first ) {
+      Allocator::construct(first, value);
     }
   }
 
-  // Destroys the objects in the range [begin, end)
-  void destroy_range(T* begin, T* end) {
-    for( ; begin != end; ++begin ) {
-      Allocator::destroy( begin );
+  // Destroys the objects in the range [first, last)
+  void destroy_range(T* first, T* last) {
+    for( ; first != last; ++first ) {
+      Allocator::destroy( first );
+    }
+  }
+
+  // Range construct for multi-pass iterators
+  template <class Iterator>
+  void range_construct_multipass(Iterator first, Iterator last) {
+    // Allocate space
+    const size_type n = std::distance(first, last);
+    if (n > SmallSize) {
+      m_begin = Allocator::allocate(n);
+      m_capacity_end = m_begin + n;
+    }
+    m_end = m_begin + n;
+
+    // Copy construct the range
+    for ( T* elem = m_begin; first != last; ++first, ++elem) {
+      Allocator::construct(elem, *first);
+    }
+  }
+
+  template <class ForwardIterator>
+  void range_construct(ForwardIterator first, ForwardIterator last,
+                       std::forward_iterator_tag) {
+    range_construct_multipass(first, last);
+  }
+
+  template <class BidirectionalIterator>
+  void range_construct(BidirectionalIterator first, BidirectionalIterator last,
+                       std::bidirectional_iterator_tag) {
+    range_construct_multipass(first, last);
+  }
+
+  template <class RandomAccessIterator>
+  void range_construct(RandomAccessIterator first, RandomAccessIterator last,
+                       std::random_access_iterator_tag) {
+    range_construct_multipass(first, last);
+  }
+
+  // Range construct for input iterators
+  template <class InputIterator>
+  void range_construct(InputIterator first, InputIterator last,
+                       std::input_iterator_tag) {
+    for( ; first != last; ++first ) {
+      push_back( *first );
     }
   }
 };
