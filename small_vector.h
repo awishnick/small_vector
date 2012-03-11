@@ -2,8 +2,11 @@
 
 #include <cstddef>      // std::size_t, std::ptrdiff_t
 #include <memory>       // std::allocator
-#include <iostream>
-template <class T, std::size_t SmallSize>
+#include <utility>      // std::move
+
+//#define SMALLVECTOR_HAS_MOVE
+
+template <class T, ::std::size_t SmallSize>
 class small_vector_storage {
 protected:
   T* small_begin() {
@@ -32,8 +35,8 @@ protected:
 };
 
 template <class T,
-          std::size_t SmallSize,
-          class Allocator = std::allocator<T> >
+          ::std::size_t SmallSize,
+          class Allocator = ::std::allocator<T> >
 class small_vector : small_vector_storage<T, SmallSize>,
                      Allocator {
   typedef small_vector_storage<T, SmallSize> storage_base;
@@ -44,13 +47,13 @@ public:
   typedef const value_type&   const_reference;
   typedef T*                  iterator;
   typedef const T*            const_iterator;
-  typedef std::size_t         size_type;
-  typedef std::ptrdiff_t      difference_type;
+  typedef ::std::size_t       size_type;
+  typedef ::std::ptrdiff_t    difference_type;
   // Check the standard on these two. Supposed to use std::allocator_traits
   typedef T*                  pointer;
   typedef const T*            const_pointer;
-  typedef std::reverse_iterator<iterator>       reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef ::std::reverse_iterator<iterator>       reverse_iterator;
+  typedef ::std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   // 23.3.6.2, construct/copy/destroy:
   explicit small_vector(const Allocator& allocator = Allocator()) :
@@ -103,7 +106,7 @@ public:
     m_capacity_end(storage_base::small_end()) {
 
     typedef
-      typename std::iterator_traits<InputIterator>::iterator_category
+      typename ::std::iterator_traits<InputIterator>::iterator_category
       iterator_category;
     range_construct(first, last, iterator_category());
   }
@@ -142,16 +145,15 @@ public:
       const size_type new_capacity = 2 * capacity();
       T* new_begin = Allocator::allocate(new_capacity);
 
-      // Copy-construct elements. If the copy constructor throws,
+      // Copy- or move-construct elements. If the constructor throws,
       // we'll delete our new array and rethrow.
-      // After copy-constructing the new element, we destroy
-      // the old one.
+      // After constructing the new element, we destroy the old one.
       try {
         T* old_elem = m_begin;
         for( T* new_elem = new_begin;
              old_elem != m_end;
              ++new_elem, ++old_elem ) {
-          Allocator::construct(new_elem, *old_elem);
+          Allocator::construct(new_elem, mymove(*old_elem));
           Allocator::destroy(old_elem);
         }
       } catch (...) {
@@ -207,7 +209,7 @@ private:
   template <class Iterator>
   void range_construct_multipass(Iterator first, Iterator last) {
     // Allocate space
-    const size_type n = std::distance(first, last);
+    const size_type n = ::std::distance(first, last);
     if (n > SmallSize) {
       m_begin = Allocator::allocate(n);
       m_capacity_end = m_begin + n;
@@ -222,29 +224,36 @@ private:
 
   template <class ForwardIterator>
   void range_construct(ForwardIterator first, ForwardIterator last,
-                       std::forward_iterator_tag) {
+                       ::std::forward_iterator_tag) {
     range_construct_multipass(first, last);
   }
 
   template <class BidirectionalIterator>
   void range_construct(BidirectionalIterator first, BidirectionalIterator last,
-                       std::bidirectional_iterator_tag) {
+                       ::std::bidirectional_iterator_tag) {
     range_construct_multipass(first, last);
   }
 
   template <class RandomAccessIterator>
   void range_construct(RandomAccessIterator first, RandomAccessIterator last,
-                       std::random_access_iterator_tag) {
+                       ::std::random_access_iterator_tag) {
     range_construct_multipass(first, last);
   }
 
   // Range construct for input iterators
   template <class InputIterator>
   void range_construct(InputIterator first, InputIterator last,
-                       std::input_iterator_tag) {
+                       ::std::input_iterator_tag) {
     for( ; first != last; ++first ) {
       push_back( *first );
     }
   }
+
+  // For C++03 compatibility, define move as a no-op if it's unsupported.
+#ifdef SMALLVECTOR_HAS_MOVE
+  static T&& mymove(T&& t) { return static_cast<T&&>(t); }
+#else
+  static T& mymove(T& t) { return t; }
+#endif
 };
 
