@@ -9,6 +9,8 @@
 template <class T, ::std::size_t SmallSize>
 class small_vector_storage {
 protected:
+  small_vector_storage() {}
+
   T* small_begin() {
     return reinterpret_cast<T*>(&m_storage[0]);
   }
@@ -24,21 +26,31 @@ protected:
   }
 
   char m_storage[sizeof(T)*SmallSize];
+private:
+  small_vector_storage(const small_vector_storage<T, SmallSize>&);
+  small_vector_storage<T, SmallSize>&
+    operator=(const small_vector_storage<T, SmallSize>&);
 };
 
 template <class T>
 class small_vector_storage<T, 0> {
 protected:
+  small_vector_storage() {}
+
   T* small_begin() { return NULL; }
   T* small_begin() const { return NULL; }
   T* small_end() const { return NULL; }
+private:
+  small_vector_storage(const small_vector_storage<T, 9>&);
+  small_vector_storage<T, 0>&
+    operator=(const small_vector_storage<T, 0>&);
 };
 
 template <class T,
           ::std::size_t SmallSize,
           class Allocator = ::std::allocator<T> >
-class small_vector : small_vector_storage<T, SmallSize>,
-                     Allocator {
+class small_vector : private small_vector_storage<T, SmallSize>,
+                     private Allocator {
   typedef small_vector_storage<T, SmallSize> storage_base;
 public:
   typedef T                   value_type;
@@ -111,6 +123,28 @@ public:
     range_construct(first, last, iterator_category());
   }
 
+  template <size_type OtherSize>
+  small_vector(const small_vector<T, OtherSize, Allocator>& x) :
+    m_begin(storage_base::small_begin()),
+    m_end(storage_base::small_begin()),
+    m_capacity_end(storage_base::small_end()) {
+
+    range_construct(x.begin(), x.end(),
+                    std::random_access_iterator_tag());
+  }
+
+  // Need a separate non-templated copy constructor, otherwise
+  // the default copy constructor gets synthesized and used
+  small_vector(const small_vector<T, SmallSize, Allocator>& x) :
+    m_begin(storage_base::small_begin()),
+    m_end(storage_base::small_begin()),
+    m_capacity_end(storage_base::small_end()) {
+
+    range_construct(x.begin(), x.end(),
+                    std::random_access_iterator_tag());
+  }
+
+
   ~small_vector() {
     // Destroy our objects
     destroy_range(m_begin, m_end);
@@ -119,6 +153,37 @@ public:
       Allocator::deallocate(m_begin, capacity());
     }
   }
+
+  // iterators:
+  iterator begin() {
+    return m_begin;
+  }
+  const_iterator begin() const {
+    return m_begin;
+  }
+  iterator end() {
+    return m_end;
+  }
+  const_iterator end() const {
+    return m_end;
+  }
+  reverse_iterator rbegin() {
+    return std::reverse_iterator<iterator>(end());
+  }
+  const_reverse_iterator rbegin() const {
+    return std::reverse_iterator<const_iterator>(end());
+  }
+  reverse_iterator rend() {
+    return std::reverse_iterator<iterator>(begin());
+  }
+  const_reverse_iterator rend() const {
+    return std::reverse_iterator<const_iterator>(begin());
+  }
+
+  const_iterator cbegin() const { return begin(); }
+  const_iterator cend() const { return end(); }
+  const_reverse_iterator crbegin() const { return rbegin(); }
+  const_reverse_iterator crend() const { return rend(); }
 
   // 23.3.6.3, capacity:
   size_type size() const { return m_end - m_begin; }
@@ -157,13 +222,14 @@ public:
           Allocator::destroy(old_elem);
         }
       } catch (...) {
-        Allocator::deallocate(new_begin, 0);
+        Allocator::deallocate(new_begin, new_capacity);
         throw;
       }
 
       // Now use the new array and free the old one
       const size_type old_size = size();
       T* old_begin = m_begin;
+      const size_type old_capacity = capacity();
       const bool was_small = is_small();
 
       m_begin = new_begin;
@@ -172,7 +238,7 @@ public:
 
       // Only free memory if it's not from our small backing storage
       if (!was_small) {
-        Allocator::deallocate(old_begin, 0);
+        Allocator::deallocate(old_begin, old_capacity);
       }
 
     }
@@ -182,13 +248,13 @@ public:
     ++m_end;
   }
 
+  // Returns whether we're using our small storage
+  bool is_small() const { return m_begin == storage_base::small_begin(); }
+
 private:
   T* m_begin,
    * m_end,
    * m_capacity_end;
-
-  // Returns whether we're using our small storage
-  bool is_small() const { return m_begin == storage_base::small_begin(); }
 
   // Initializes the range [first, last) to value. Doesn't destruct the
   // range because it assumes that no objects have been constructed there.

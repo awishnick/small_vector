@@ -356,3 +356,78 @@ TEST(small_vector, range_construct) {
   }
 }
 
+TEST(copy_construct, copies_values) {
+  // Make small and big vectors, i.e. the big one is
+  // not using its stack storage
+  small_vector<int, 4> vsmall(3);
+  ASSERT_EQ(3u, vsmall.size());
+  ASSERT_TRUE(vsmall.is_small());
+  for (unsigned i=0; i<vsmall.size(); ++i) vsmall[i] = 2 * i;
+
+  small_vector<int, 4> vbig(25);
+  ASSERT_EQ(25u, vbig.size());
+  ASSERT_FALSE(vbig.is_small());
+  for (unsigned i=0; i<vbig.size(); ++i) vbig[i] = 3 * i;
+
+  // Test copy-constructing from the small vector,
+  // when the small size is smaller, same, and bigger
+  {
+    const int size = static_cast<int>(vsmall.size());
+
+    small_vector<int, 0> v1(vsmall);
+    ASSERT_EQ(vsmall.size(), v1.size());
+    EXPECT_FALSE(v1.is_small());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v1[i], vsmall[i]);
+
+    small_vector<int, 2> v2(vsmall);
+    ASSERT_EQ(vsmall.size(), v2.size());
+    EXPECT_FALSE(v2.is_small());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v2[i], vsmall[i]);
+
+    small_vector<int, 3> v3(vsmall);
+    ASSERT_EQ(vsmall.size(), v3.size());
+    EXPECT_TRUE(v3.is_small());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v3[i], vsmall[i]);
+
+    small_vector<int, 4> v4(vsmall);
+    ASSERT_EQ(vsmall.size(), v4.size());
+    EXPECT_TRUE(v4.is_small());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v4[i], vsmall[i]);
+
+    small_vector<int, 25> v5(vsmall);
+    ASSERT_EQ(vsmall.size(), v5.size());
+    EXPECT_TRUE(v5.is_small());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v5[i], vsmall[i]);
+  }
+
+  // Test copy-constructing from the big vector,
+  // when the small size is smaller, same, and bigger
+  {
+    const int size = static_cast<int>(vbig.size());
+
+    small_vector<int, 0> v1(vbig);
+    ASSERT_EQ(vbig.size(), v1.size());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v1[i], vbig[i]);
+
+    small_vector<int, 3> v2(vbig);
+    ASSERT_EQ(vbig.size(), v2.size());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v2[i], vbig[i]);
+
+    small_vector<int, 4> v3(vbig);
+    ASSERT_EQ(vbig.size(), v3.size());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v3[i], vbig[i]);
+
+    small_vector<int, 24> v4(vbig);
+    ASSERT_EQ(vbig.size(), v4.size());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v4[i], vbig[i]);
+
+    small_vector<int, 25> v5(vbig);
+    ASSERT_EQ(vbig.size(), v5.size());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v5[i], vbig[i]);
+
+    small_vector<int, 50> v6(vbig);
+    ASSERT_EQ(vbig.size(), v6.size());
+    for (int i=0; i<size; ++i) EXPECT_EQ(v6[i], vbig[i]);
+  }
+}
+
