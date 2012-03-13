@@ -216,7 +216,7 @@ public:
       // elements, not size() + 1
 
       // This could throw bad_alloc
-      const size_type new_capacity = 2 * capacity();
+      const size_type new_capacity = std::max<size_type>(1u, 2 * capacity());
       T* new_begin = Allocator::allocate(new_capacity);
 
       // Copy- or move-construct elements. If the constructor throws,
