@@ -9,3 +9,4 @@ fi
 # Run all tests
 ./construct
 ./modifiers
+./capacity

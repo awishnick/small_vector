@@ -36,7 +36,7 @@ CXX = clang++
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = construct modifiers
+TESTS = construct modifiers capacity
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -91,3 +91,11 @@ modifiers.o : $(USER_DIR)/modifiers.cpp \
 
 modifiers : modifiers.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+
+capacity.o : $(USER_DIR)/capacity.cpp \
+	           $(SMALL_VECTOR_HEADER)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/capacity.cpp
+
+capacity : capacity.o gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+

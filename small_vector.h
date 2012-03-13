@@ -186,9 +186,18 @@ public:
   const_reverse_iterator crend() const { return rend(); }
 
   // 23.3.6.3, capacity:
-  size_type size() const { return m_end - m_begin; }
-  size_type capacity() const { return m_capacity_end - m_begin; }
-  bool empty() const { return m_begin == m_end; }
+  size_type size() const {
+    return m_end - m_begin;
+  }
+  size_type max_size() const {
+    return std::numeric_limits<size_type>::max();
+  }
+  size_type capacity() const {
+    return m_capacity_end - m_begin;
+  }
+  bool empty() const {
+    return m_begin == m_end;
+  }
 
   // element access:
   reference operator[](size_type n) {
